@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>F1 Tippspiel 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700;900&display=swap" rel="stylesheet">
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--red:#E10600;--rdim:#8B0400;--bg:#080808;--card:#111;--bdr:#1e1e1e;--gray:#666;--dark:#222;--dark2:#1a1a1a;--green:#00D47E;--yellow:#FFD700;--white:#f5f5f5}
+body{font-family:'Titillium Web','Segoe UI',sans-serif;background:var(--bg);color:var(--white);min-height:100vh}
+#app{max-width:600px;margin:0 auto}
+/* Header */
+.hdr{background:linear-gradient(135deg,var(--red),var(--rdim));padding:18px 20px 14px;display:flex;align-items:center;gap:14px}
+.htitle{font-size:22px;font-weight:900;letter-spacing:1px}
+.hsub{font-size:10px;color:rgba(255,255,255,.6);letter-spacing:2px;margin-top:2px}
+.hleader{text-align:right;flex-shrink:0}
+.hln{font-size:15px;font-weight:700;color:var(--yellow)}
+.hll{font-size:9px;color:rgba(255,255,255,.45);letter-spacing:1px}
+/* Nav */
+.nav{display:flex;background:var(--card);border-bottom:2px solid var(--red)}
+.nb{flex:1;padding:11px 4px;border:none;background:transparent;color:var(--gray);cursor:pointer;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:inherit;transition:color .15s}
+.nb .ico{font-size:16px}
+.nb.active{color:var(--white);background:rgba(225,6,0,.1);border-bottom:2px solid var(--red);margin-bottom:-2px}
+/* Layout */
+.content{padding:14px;padding-bottom:60px}
+.card{background:var(--card);border:1px solid var(--bdr);border-radius:8px;padding:14px;margin-bottom:12px}
+.card-danger{border-color:rgba(225,6,0,.3)}
+.lbl{font-size:10px;color:var(--gray);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px;font-weight:700;display:block}
+.row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--bdr)}
+.row:last-child{border-bottom:none}
+.av{width:28px;height:28px;border-radius:50%;background:var(--dark);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
+/* Tags */
+.tag{display:inline-block;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:700}
+.tg{background:rgba(0,212,126,.18);color:var(--green)}
+.tr{background:rgba(225,6,0,.18);color:#ff6b6b}
+.tgy{background:#252525;color:var(--gray)}
+.ty{background:rgba(255,215,0,.12);color:var(--yellow)}
+.tbl{background:rgba(100,160,255,.15);color:#7eb8ff}
+/* Inputs */
+input,select,textarea{background:var(--dark2);border:1px solid var(--bdr);border-radius:6px;padding:8px 10px;color:var(--white);font-size:13px;outline:none;font-family:inherit;width:100%}
+textarea{resize:vertical;min-height:60px}
+select{cursor:pointer}
+select option{background:#1a1a1a}
+input::placeholder,textarea::placeholder{color:#444}
+/* Buttons */
+.btn{padding:9px 16px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:700;letter-spacing:.5px;font-family:inherit;transition:opacity .15s}
+.btn:hover{opacity:.85}
+.br{background:var(--red);color:var(--white)}
+.bd{background:var(--dark);color:var(--white)}
+.bg{background:rgba(0,212,126,.2);color:var(--green)}
+.bbl{width:100%;padding:11px}
+.sm{padding:5px 10px;border-radius:4px;border:none;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;transition:opacity .15s}
+.sm:hover{opacity:.8}
+/* Bars */
+.bar{height:5px;background:#181818;border-radius:3px;overflow:hidden;margin-left:38px;margin-top:4px}
+.barf{height:100%;border-radius:3px;transition:width .6s ease}
+/* Grids */
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.gedit{display:grid;grid-template-columns:70px 1fr 1fr;gap:6px;align-items:end;margin-bottom:10px}
+/* Misc */
+.ablk{margin-bottom:10px;padding:12px;background:#0a0a0a;border-radius:8px;border:1px solid var(--bdr)}
+.mb14{margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--bdr)}
+.ital{font-style:italic;color:#888;font-size:12px}
+.bk{padding-left:38px;margin-top:8px}
+.bkl{font-size:11px;color:var(--gray);margin-bottom:3px;display:flex;gap:6px}
+.bkr{color:#444;font-family:monospace;width:28px;flex-shrink:0}
+.rbox{margin-bottom:14px;padding:12px;background:rgba(0,212,126,.04);border:1px solid rgba(0,212,126,.2);border-radius:6px}
+.clk{cursor:pointer;transition:opacity .15s}.clk:hover{opacity:.65}
+.chip{display:flex;align-items:center;gap:6px;padding:5px 10px;background:#0d0d0d;border-radius:20px;font-size:11px}
+.sync-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.pulse{animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.setup-banner{background:linear-gradient(135deg,#1a0a00,#2a1000);border:1px solid rgba(255,165,0,.4);border-radius:8px;padding:16px;margin-bottom:12px}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--red);border-radius:2px}
+</style>
+</head>
+<body>
+<div id="app"><div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:12px"><div style="font-size:40px">🏎️</div><div style="color:var(--gray)">Verbinde mit Firebase...</div></div></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  🔧 FIREBASE CONFIG – hier deine Werte eintragen!
+//  → console.firebase.google.com → Projekt → Web-App
+// ═══════════════════════════════════════════════════════
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBKSjhz9s12f-UpWN12hjj3DnzhPbldNaI",
+  authDomain: "f1tippspiel-b5faa.firebaseapp.com",
+  projectId: "f1tippspiel-b5faa",
+  storageBucket: "f1tippspiel-b5faa.firebasestorage.app",
+  messagingSenderId: "71934972223",
+  appId: "1:71934972223:web:d68b9512dca1ceac4ec38a",
+  measurementId: "G-M2C8TE8NP3"
+};
+// ═══════════════════════════════════════════════════════
+
+const IS_CONFIGURED = !FIREBASE_CONFIG.apiKey.startsWith("DEIN");
+
+const DRV = ["Albon","Alonso","Antonelli","Bearman","Bortoleto","Bottas","Doohan","Gasly","Hadjar","Hamilton","Hulkenberg","Lawson","Leclerc","Magnussen","Norris","Ocon","Piastri","Russell","Sainz","Stroll","Tsunoda","Verstappen"];
+const MED = ["🥇","🥈","🥉"];
+const CAL = [
+  {k:"R01",n:"Australien GP",   c:"Albert Park Circuit",               d:"15.03.2026"},
+  {k:"R02",n:"China GP",         c:"Shanghai International Circuit",    d:"22.03.2026"},
+  {k:"R03",n:"Japan GP",         c:"Suzuka Racing Course",              d:"05.04.2026"},
+  {k:"R04",n:"Bahrain GP",       c:"Bahrain International Circuit",     d:"19.04.2026"},
+  {k:"R05",n:"Saudi-Arabien GP", c:"Jeddah Corniche Circuit",           d:"03.05.2026"},
+  {k:"R06",n:"Miami GP",         c:"Miami International Autodrome",     d:"10.05.2026"},
+  {k:"R07",n:"Emilia Romagna GP",c:"Autodromo Enzo e Dino Ferrari",     d:"24.05.2026"},
+  {k:"R08",n:"Monaco GP",        c:"Circuit de Monaco",                 d:"31.05.2026"},
+  {k:"R09",n:"Spanien GP",       c:"Circuit de Barcelona-Catalunya",    d:"14.06.2026"},
+  {k:"R10",n:"Kanada GP",        c:"Circuit Gilles Villeneuve",         d:"21.06.2026"},
+  {k:"R11",n:"Österreich GP",    c:"Red Bull Ring",                     d:"05.07.2026"},
+  {k:"R12",n:"Großbrit. GP",     c:"Silverstone Circuit",               d:"12.07.2026"},
+  {k:"R13",n:"Belgien GP",       c:"Circuit de Spa-Francorchamps",      d:"26.07.2026"},
+  {k:"R14",n:"Ungarn GP",        c:"Hungaroring",                       d:"02.08.2026"},
+  {k:"R15",n:"Niederlande GP",   c:"Circuit Zandvoort",                 d:"30.08.2026"},
+  {k:"R16",n:"Italien GP",       c:"Autodromo Nazionale di Monza",      d:"06.09.2026"},
+  {k:"R17",n:"Aserbaidschan GP", c:"Baku City Circuit",                 d:"20.09.2026"},
+  {k:"R18",n:"Singapur GP",      c:"Marina Bay Street Circuit",         d:"04.10.2026"},
+  {k:"R19",n:"USA GP",           c:"Circuit of the Americas",           d:"18.10.2026"},
+  {k:"R20",n:"Mexiko GP",        c:"Autodromo Hermanos Rodriguez",      d:"25.10.2026"},
+  {k:"R21",n:"Brasilien GP",     c:"Autodromo Jose Carlos Pace",        d:"08.11.2026"},
+  {k:"R22",n:"Las Vegas GP",     c:"Las Vegas Strip Circuit",           d:"21.11.2026"},
+  {k:"R23",n:"Katar GP",         c:"Lusail International Circuit",      d:"29.11.2026"},
+  {k:"R24",n:"Abu Dhabi GP",     c:"Yas Marina Circuit",                d:"06.12.2026"},
+];
+
+// ── APP STATE ────────────────────────────────────────────
+let db = null;
+let state = {
+  players: ["Lars","Hannah","Roschan","Tobi"],
+  seasonTips: {
+    Lars:    {champion:"Norris",    hotTake:"Sainz Top 5",        htOk:null, chOk:null},
+    Hannah:  {champion:"Verstappen",hotTake:"Williams Top 4",     htOk:null, chOk:null},
+    Roschan: {champion:"Leclerc",   hotTake:"Leclerc Champion 🤡",htOk:null, chOk:null},
+    Tobi:    {champion:"Russell",   hotTake:"Audi Top 5",         htOk:null, chOk:null},
+  },
+  raceTips: {},
+  raceResults: {}
+};
+let races = CAL.map(r => ({...r, hasResults: false}));
+let tab = "leaderboard", selRace = null, openBD = null, draft = {};
+let apiMsg = "Lade Kalender...", syncStatus = "connecting";
+
+// ── FIREBASE ─────────────────────────────────────────────
+function initFirebase() {
+  if (!IS_CONFIGURED) { render(); return; }
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.firestore();
+    // Real-time listener – updates all clients instantly
+    db.collection("tippspiel").doc("state").onSnapshot(snap => {
+      if (snap.exists) {
+        const d = snap.data();
+        state = {...state, ...d};
+        // Merge raceResults into races
+        Object.keys(state.raceResults || {}).forEach(key => {
+          const r = races.find(rc => rc.k === key);
+          if (r) r.hasResults = true;
+        });
+      }
+      syncStatus = "online";
+      render();
+    }, err => {
+      syncStatus = "error";
+      render();
+    });
+  } catch(e) { syncStatus = "error"; render(); }
+}
+
+async function saveState(patch) {
+  // Merge patch into state
+  Object.assign(state, patch);
+  render();
+  if (!db) return;
+  try {
+    await db.collection("tippspiel").doc("state").set(state);
+  } catch(e) { console.error("Save failed:", e); }
+}
+
+// ── F1 API ───────────────────────────────────────────────
+async function fetchResults() {
+  apiMsg = "Lade Ergebnisse..."; render();
+  try {
+    // Fetch schedule (may override CAL with official data)
+    const rs = await fetch("https://api.jolpi.ca/ergast/f1/2026/races.json?limit=100", {signal: AbortSignal.timeout(9000)});
+    if (rs.ok) {
+      const d = await rs.json();
+      const list = d?.MRData?.RaceTable?.Races || [];
+      if (list.length > 0) {
+        races = list.map(race => ({
+          k: "R" + String(race.round).padStart(2,"0"),
+          n: race.raceName.replace(" Grand Prix"," GP"),
+          c: race.Circuit?.circuitName || "",
+          d: race.date,
+          hasResults: false
+        }));
+      }
+    }
+    // Fetch results
+    const rr = await fetch("https://api.jolpi.ca/ergast/f1/2026/results.json?limit=500", {signal: AbortSignal.timeout(9000)});
+    if (rr.ok) {
+      const d2 = await rr.json();
+      const list2 = d2?.MRData?.RaceTable?.Races || [];
+      const newResults = {...(state.raceResults || {})};
+      list2.forEach(race => {
+        const key = "R" + String(race.round).padStart(2,"0");
+        const t3 = (race.Results || []).slice(0,3);
+        if (t3.length >= 3) {
+          newResults[key] = {p1: t3[0].Driver.familyName, p2: t3[1].Driver.familyName, p3: t3[2].Driver.familyName};
+          const f = races.find(rc => rc.k === key);
+          if (f) f.hasResults = true;
+        }
+      });
+      const n = Object.keys(newResults).length;
+      apiMsg = `${races.length} Rennen · ${n > 0 ? n+" Ergebnisse" : "Saison noch nicht gestartet"}`;
+      if (n > 0) await saveState({raceResults: newResults});
+      else render();
+    } else { apiMsg = `${races.length} Rennen geladen · keine Ergebnisse`; render(); }
+  } catch(e) { apiMsg = `Kalender geladen · API offline`; render(); }
+}
+
+// ── SCORING ──────────────────────────────────────────────
+function scoreRace(tips, res) {
+  if (!tips || !res?.p1) return {pts: 0, bk: []};
+  const pod = [res.p1, res.p2, res.p3].map(x => (x||"").toLowerCase());
+  let pts = 0; const bk = [];
+  ["p1","p2","p3"].forEach(pos => {
+    const t = (tips[pos]||"").toLowerCase(); if (!t) return;
+    if (pod.includes(t))                       { pts += 1; bk.push(tips[pos]+" Podium +1"); }
+    if (t === (res[pos]||"").toLowerCase())    { pts += 2; bk.push(pos.toUpperCase()+" exakt +2"); }
+  });
+  if (tips.htOk === true) { pts += 4; bk.push("Race Hot Take +4"); }
+  return {pts, bk};
+}
+function pTotal(p) {
+  let tot = 0;
+  const st = state.seasonTips?.[p] || {};
+  Object.keys(state.raceTips || {}).forEach(k => {
+    tot += scoreRace(state.raceTips[k]?.[p], (state.raceResults||{})[k]).pts;
+  });
+  if (st.htOk  === true) tot += 4;
+  if (st.chOk === true) tot += 4;
+  return tot;
+}
+function lb() { return (state.players||[]).map(p => ({name:p, total:pTotal(p)})).sort((a,b) => b.total-a.total); }
+
+// ── DOM HELPERS ──────────────────────────────────────────
+function el(t, a, ch) {
+  const e = document.createElement(t);
+  if (a) Object.entries(a).forEach(([k,v]) => {
+    if (k==="cls") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v);
+  });
+  if (ch) (Array.isArray(ch)?ch:[ch]).forEach(c => { if(c==null)return; e.appendChild(typeof c==="string"?document.createTextNode(c):c); });
+  return e;
+}
+const dv = (cls,ch) => el("div", cls?{cls}:null, ch);
+function sp(cls, t) { const s = el("span", cls?{cls}:null); if(t!=null) s.textContent=t; return s; }
+function pill(ok) {
+  if (ok===true)  return sp("tag tg","✓ Richtig");
+  if (ok===false) return sp("tag tr","✗ Falsch");
+  return sp("tag tgy","offen");
+}
+function dSel(val, onChange) {
+  const s = el("select", {onchange: e => onChange(e.target.value)});
+  const o0 = el("option",{value:""}); o0.textContent="— wählen —"; s.appendChild(o0);
+  DRV.forEach(d => { const o = el("option",{value:d}); o.textContent=d; if(d===val) o.selected=true; s.appendChild(o); });
+  return s;
+}
+function bGrp(onOk, onFalse, onNone, curVal) {
+  const w = dv(); w.style="display:flex;gap:4px";
+  [[true,"✓ Richtig","rgba(0,212,126,.28)","#00D47E",onOk],
+   [false,"✗ Falsch","rgba(225,6,0,.28)","#ff6b6b",onFalse],
+   [null,"— Offen","#1e1e1e","#555",onNone]].forEach(([v,l,bg,col,fn]) => {
+    const b = el("button",{cls:"sm",onclick:fn});
+    b.textContent = l;
+    b.style = `background:${curVal===v?bg:"#1a1a1a"};color:${curVal===v?col:"#555"}`;
+    w.appendChild(b);
+  });
+  return w;
+}
+
+// ── SETUP BANNER ─────────────────────────────────────────
+function setupBanner() {
+  const d = dv("setup-banner");
+  const t = el("div"); t.innerHTML = "⚙️ <b>Firebase noch nicht konfiguriert</b>";
+  t.style = "font-size:14px;margin-bottom:10px;color:#ffaa44";
+  const steps = el("ol"); steps.style="padding-left:18px;font-size:12px;color:#aaa;line-height:2";
+  [
+    '<a href="https://console.firebase.google.com" target="_blank" style="color:#7eb8ff">console.firebase.google.com</a> → Projekt erstellen',
+    "Firestore Database → erstellen → Testmodus (30 Tage) oder Regeln unten",
+    'Im Projekt: Zahnrad → Projekteinstellungen → Web-App hinzufügen (&lt;/&gt;)',
+    "Den <b>firebaseConfig</b>-Block kopieren und oben in der HTML-Datei eintragen",
+    "Datei speichern und neu öffnen → fertig ✅"
+  ].forEach(s => { const li = el("li"); li.innerHTML = s; steps.appendChild(li); });
+  const rule = dv(); rule.style="margin-top:12px;padding:10px;background:#0a0a0a;border-radius:6px;font-size:11px;color:#666";
+  rule.innerHTML = "💡 <b style='color:#aaa'>Firestore Regeln</b> (für alle lesbar/schreibbar im Freundeskreis):<br><code style='color:#7eb8ff'>allow read, write: if true;</code>";
+  d.appendChild(t); d.appendChild(steps); d.appendChild(rule);
+  return d;
+}
+
+// ── SYNC STATUS ──────────────────────────────────────────
+function syncChip() {
+  const cfg = {
+    online:     ["#00D47E","●","Live"],
+    connecting: ["#FFD700","●","Verbinde..."],
+    error:      ["#ff6b6b","●","Fehler"],
+  }[syncStatus] || ["#555","●","–"];
+  const chip = dv("chip");
+  const dot = sp("sync-dot"); dot.style.background = cfg[0];
+  if (syncStatus==="connecting") dot.classList.add("pulse");
+  chip.appendChild(dot);
+  chip.appendChild(sp(null, cfg[2]));
+  return chip;
+}
+
+// ── LEADERBOARD ──────────────────────────────────────────
+function rLB() {
+  const lbd = lb(); const mx = Math.max(...lbd.map(p=>p.total),1);
+  const wrap = dv();
+  if (!IS_CONFIGURED) wrap.appendChild(setupBanner());
+  const card = dv("card");
+  const top = dv(); top.style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px";
+  const left = dv();
+  left.appendChild(sp("lbl","Gesamtwertung 2026"));
+  const sub = sp(); sub.textContent=apiMsg; sub.style="font-size:10px;color:var(--gray)"; left.appendChild(sub);
+  top.appendChild(left); top.appendChild(syncChip()); card.appendChild(top);
+
+  lbd.forEach((p,i) => {
+    const bkA = [];
+    Object.keys(state.raceTips||{}).forEach(key => {
+      const sc = scoreRace(state.raceTips[key]?.[p.name], (state.raceResults||{})[key]);
+      if (sc.pts > 0) bkA.push({race:key, pts:sc.pts, detail:sc.bk});
+    });
+    const st = state.seasonTips?.[p.name] || {};
+    const isOpen = openBD === p.name;
+    const pb = dv(); pb.style="margin-bottom:16px";
+    const tr = dv(); tr.style="display:flex;align-items:center;gap:10px;margin-bottom:6px";
+    const med = sp(); med.textContent=MED[i]||("#"+(i+1)); med.style="font-size:22px;width:28px;text-align:center;flex-shrink:0";
+    const nm = sp(); nm.textContent=p.name; nm.style="font-weight:700;font-size:15px;flex:1";
+    const pts = sp(); pts.textContent=String(p.total); pts.style=`font-family:'Courier New',monospace;font-weight:700;font-size:22px;color:${i===0?"var(--yellow)":"var(--white)"}`;
+    const ptsL = sp(); ptsL.textContent="Pkt"; ptsL.style="color:var(--gray);font-size:11px;margin-right:4px";
+    const tog = el("button",{cls:"sm",onclick:()=>{openBD=isOpen?null:p.name;render();}});
+    tog.textContent=isOpen?"▲":"▼"; tog.style="background:var(--dark);color:var(--white)";
+    tr.appendChild(med);tr.appendChild(nm);tr.appendChild(pts);tr.appendChild(ptsL);tr.appendChild(tog);pb.appendChild(tr);
+    const bw = dv("bar"); const bf = dv("barf");
+    bf.style=`width:${p.total/mx*100}%;background:${i===0?"linear-gradient(90deg,var(--red),var(--yellow))":"linear-gradient(90deg,var(--red),#ff6b6b)"}`;
+    bw.appendChild(bf); pb.appendChild(bw);
+    if (isOpen) {
+      const bd = dv("bk");
+      bkA.forEach(b => {
+        const line = dv("bkl");
+        const rc = sp("bkr",b.race); const det = sp(); det.textContent=b.detail.join(" · "); det.style="flex:1";
+        const pt = sp(); pt.textContent="+"+b.pts; pt.style="color:var(--green);font-weight:700";
+        line.appendChild(rc);line.appendChild(det);line.appendChild(pt);bd.appendChild(line);
+      });
+      if (st.htOk===true)  { const d=sp();d.textContent="🔥 Saison-Hot-Take ✓ +4";d.style="display:block;font-size:11px;color:var(--green)";bd.appendChild(d); }
+      if (st.chOk===true) { const d=sp();d.textContent="🏆 Champion ✓ +4";d.style="display:block;font-size:11px;color:var(--green)";bd.appendChild(d); }
+      if (!bkA.length && st.htOk!==true && st.chOk!==true) { const d=sp();d.textContent="Noch keine Punkte";d.style="font-size:11px;color:var(--gray)";bd.appendChild(d); }
+      pb.appendChild(bd);
+    }
+    card.appendChild(pb);
+  });
+  wrap.appendChild(card);
+  const rc = dv("card"); rc.style="font-size:12px;color:var(--gray);line-height:2";
+  rc.appendChild(sp("lbl","Punkteregeln"));
+  [["🏎️","Person im Podium","1"],["🎯","Exakte Position","2"],["🔥","Race Hot Take korrekt","4"],["🔥","Saison-Hot-Take korrekt","4"],["🏆","WM-Champion richtig","4"]]
+    .forEach(([ico,txt,p]) => { const d=document.createElement("div");d.innerHTML=`${ico} ${txt}: <b style="color:var(--white)">+${p} Pkt</b>`;rc.appendChild(d); });
+  wrap.appendChild(rc);
+  return wrap;
+}
+
+// ── RACES LIST ───────────────────────────────────────────
+function rRaces() {
+  if (selRace) return rDetail(selRace);
+  const wrap = dv();
+  const done = races.filter(r => r.hasResults);
+  const next = races.filter(r => !r.hasResults);
+
+  if (next.length > 0) {
+    const card = dv("card"); card.appendChild(sp("lbl","Kommende Rennen 2026"));
+    next.forEach(r => {
+      const tips = state.raceTips?.[r.k] || {};
+      const tipCount = (state.players||[]).filter(p => tips[p]?.p1 || tips[p]?.hotTake).length;
+      const row = dv("row clk"); row.addEventListener("click",()=>{draft={};selRace=r.k;render();});
+      const ks = sp();ks.textContent=r.k;ks.style="font-family:monospace;color:var(--gray);font-size:11px;width:28px;flex-shrink:0";
+      const info = dv(); info.style="flex:1";
+      const nn = sp(); nn.textContent=r.n; nn.style="font-weight:600;display:block";
+      const dd = sp(); dd.textContent=r.c+" · "+r.d; dd.style="font-size:11px;color:var(--gray);display:block";
+      info.appendChild(nn); info.appendChild(dd);
+      row.appendChild(ks); row.appendChild(info);
+      if (tipCount > 0) row.appendChild(sp("tag tg",`✓ ${tipCount}/${(state.players||[]).length}`));
+      else row.appendChild(sp("tag tgy","+ Tippen"));
+      row.appendChild(sp(null," ›")); card.appendChild(row);
+    });
+    wrap.appendChild(card);
+  }
+  if (done.length > 0) {
+    const card = dv("card"); card.appendChild(sp("lbl","Abgeschlossene Rennen"));
+    done.forEach(r => {
+      const res = (state.raceResults||{})[r.k];
+      const topP = (state.players||[]).map(p => ({name:p, pts:scoreRace(state.raceTips?.[r.k]?.[p],res).pts})).sort((a,b)=>b.pts-a.pts)[0];
+      const row = dv("row clk"); row.addEventListener("click",()=>{draft={};selRace=r.k;render();});
+      const ks = sp();ks.textContent=r.k;ks.style="font-family:monospace;color:var(--gray);font-size:11px;width:28px;flex-shrink:0";
+      const info = dv(); info.style="flex:1";
+      const nn = sp(); nn.textContent=r.n; nn.style="font-weight:600;display:block";
+      const dd = sp(); dd.textContent=res?`${res.p1} · ${res.p2} · ${res.p3}`:r.d; dd.style="font-size:11px;color:var(--gray);display:block";
+      info.appendChild(nn); info.appendChild(dd); row.appendChild(ks); row.appendChild(info);
+      if (topP?.pts > 0) row.appendChild(sp("tag ty",`${topP.name} +${topP.pts}`));
+      row.appendChild(sp(null," ›")); card.appendChild(row);
+    });
+    wrap.appendChild(card);
+  }
+  if (!next.length && !done.length) {
+    const d=dv();d.style="color:var(--gray);text-align:center;padding:40px;font-size:14px";d.textContent=apiMsg;wrap.appendChild(d);
+  }
+  return wrap;
+}
+
+// ── RACE DETAIL ──────────────────────────────────────────
+function rDetail(rk) {
+  const race = races.find(r=>r.k===rk) || {k:rk,n:rk,c:"",d:""};
+  const res = (state.raceResults||{})[rk];
+  const saved = state.raceTips?.[rk] || {};
+  const wrap = dv();
+  const back = el("button",{cls:"btn bd",onclick:()=>{selRace=null;render();}});
+  back.textContent="← Zurück"; back.style.marginBottom="12px"; wrap.appendChild(back);
+
+  const card = dv("card");
+  const t = el("div"); t.textContent=race.n; t.style="font-size:17px;font-weight:700;margin-bottom:2px"; card.appendChild(t);
+  const s = el("div"); s.textContent=(race.c||"")+(race.d?" · "+race.d:""); s.style="font-size:11px;color:var(--gray);margin-bottom:14px"; card.appendChild(s);
+
+  // Official result or manual entry
+  if (res) {
+    const rb = dv("rbox");
+    const rl = sp("lbl","🏁 Offizielles Ergebnis"); rl.style="color:var(--green);display:block;margin-bottom:8px"; rb.appendChild(rl);
+    ["p1","p2","p3"].forEach((pos,i) => {
+      const row=dv();row.style="display:flex;gap:10px;align-items:center;margin-bottom:5px";
+      row.appendChild(sp(null,MED[i]));
+      const n=sp();n.textContent=res[pos]||"?";n.style="font-weight:700;font-size:15px";row.appendChild(n);rb.appendChild(row);
+    });
+    card.appendChild(rb);
+  } else {
+    const mb=dv();mb.style="margin-bottom:14px;padding:12px;background:rgba(225,6,0,.04);border:1px solid rgba(225,6,0,.15);border-radius:6px";
+    const ml=sp("lbl","📝 Ergebnis manuell eintragen");ml.style.display="block";ml.style.marginBottom="8px";mb.appendChild(ml);
+    const gr=dv("g3");
+    ["p1","p2","p3"].forEach((pos,i)=>{
+      const col=dv();const lb2=sp("lbl",MED[i]+" "+pos.toUpperCase());lb2.style.display="block";col.appendChild(lb2);
+      col.appendChild(dSel((state.raceResults?.[rk]||{})[pos]||"",v=>{
+        const newRes={...(state.raceResults?.[rk]||{}),[pos]:v};
+        const allSet=newRes.p1&&newRes.p2&&newRes.p3;
+        if(allSet){const f=races.find(rc=>rc.k===rk);if(f)f.hasResults=true;}
+        saveState({raceResults:{...(state.raceResults||{}),[rk]:newRes}});
+      }));gr.appendChild(col);
+    });mb.appendChild(gr);card.appendChild(mb);
+  }
+
+  // Per-player tips: P1/P2/P3 + Hot Take
+  const tl = sp("lbl","🗳️ Tipps eingeben");tl.style.display="block";card.appendChild(tl);
+
+  (state.players||[]).forEach(pl => {
+    const eff = {...(saved[pl]||{}), ...(draft[pl]||{})};
+    const sc = res ? scoreRace(eff,res) : {pts:null};
+    const blk = dv("mb14");
+
+    // Player header
+    const tr2 = dv();tr2.style="display:flex;align-items:center;gap:8px;margin-bottom:10px";
+    const av = dv("av");av.textContent=pl[0];
+    const nm = sp();nm.textContent=pl;nm.style="font-weight:700;flex:1";
+    tr2.appendChild(av);tr2.appendChild(nm);
+    if (sc.pts!==null) { const ss=sp("tag tg","+"+sc.pts+" Pkt");ss.style.fontSize="13px";tr2.appendChild(ss); }
+    blk.appendChild(tr2);
+
+    // Podium grid
+    const gr = dv("g3");
+    ["p1","p2","p3"].forEach((pos,i) => {
+      const col=dv();
+      const lb3=sp("lbl",MED[i]+" "+pos.toUpperCase());lb3.style.display="block";col.appendChild(lb3);
+      col.appendChild(dSel(eff[pos]||"",v=>{
+        if(!draft[pl])draft[pl]={};
+        draft[pl]={...saved[pl]||{},...draft[pl]||{},[pos]:v};
+        render();
+      }));gr.appendChild(col);
+    });
+    blk.appendChild(gr);
+
+    // Hot Take field
+    const htDiv = dv(); htDiv.style="margin-top:8px";
+    const htLbl = sp("lbl","🔥 Race Hot Take (+4 wenn korrekt)");htLbl.style.display="block";htDiv.appendChild(htLbl);
+    const htInp = el("input",{type:"text",placeholder:'z.B. "Hamilton Top 3" oder "Safety Car"'});
+    htInp.value = eff.hotTake || "";
+    htInp.addEventListener("input", e => {
+      if(!draft[pl])draft[pl]={};
+      draft[pl]={...saved[pl]||{},...draft[pl]||{},hotTake:e.target.value};
+    });
+    htDiv.appendChild(htInp);
+    // Show evaluation status if admin has rated it
+    if (eff.htOk !== undefined && eff.htOk !== null) {
+      const status = dv(); status.style="margin-top:4px";
+      status.appendChild(pill(eff.htOk));
+      htDiv.appendChild(status);
+    }
+    blk.appendChild(htDiv);
+    card.appendChild(blk);
+  });
+
+  const sb = el("button",{cls:"btn br bbl",onclick:()=>{
+    const merged = {};
+    (state.players||[]).forEach(p => { merged[p] = {...(saved[p]||{}), ...(draft[p]||{})}; });
+    saveState({raceTips:{...(state.raceTips||{}),[rk]:merged}});
+    draft = {};
+  }});
+  sb.textContent="💾 Alle Tipps für "+race.n+" speichern";
+  card.appendChild(sb);
+  wrap.appendChild(card);
+  return wrap;
+}
+
+// ── SEASON TAB ───────────────────────────────────────────
+function rSeason() {
+  const wrap = dv();
+  const cc = dv("card"); cc.appendChild(sp("lbl","🏆 WM-Champion-Tipps"));
+  const s1=sp();s1.textContent="Admin-Tab → bewertet am Saisonende (+4 Pkt)";s1.style="font-size:11px;color:var(--gray);display:block;margin-bottom:10px";cc.appendChild(s1);
+  (state.players||[]).forEach(p => {
+    const st=state.seasonTips?.[p]||{};
+    const row=dv("row");const av=dv("av");av.textContent=p[0];
+    const nm=sp();nm.textContent=p;nm.style="font-weight:700;flex:1";
+    const ch=sp();ch.textContent=st.champion||"?";ch.style="font-weight:600;color:var(--yellow);margin-right:6px";
+    row.appendChild(av);row.appendChild(nm);row.appendChild(ch);row.appendChild(pill(st.chOk));cc.appendChild(row);
+  });
+  wrap.appendChild(cc);
+  const hc = dv("card"); hc.appendChild(sp("lbl","🔥 Saison-Hot-Takes"));
+  const s2=sp();s2.textContent="Admin-Tab → bewertet am Saisonende (+4 Pkt)";s2.style="font-size:11px;color:var(--gray);display:block;margin-bottom:10px";hc.appendChild(s2);
+  (state.players||[]).forEach(p => {
+    const st=state.seasonTips?.[p]||{};
+    const blk=dv("mb14");
+    const tr2=dv();tr2.style="display:flex;align-items:center;gap:8px;margin-bottom:5px";
+    const av=dv("av");av.textContent=p[0];const nm=sp();nm.textContent=p;nm.style="font-weight:700;flex:1";
+    tr2.appendChild(av);tr2.appendChild(nm);tr2.appendChild(pill(st.htOk));blk.appendChild(tr2);
+    const q=sp();q.textContent='"'+(st.hotTake||"?")+'"';q.style="font-style:italic;color:#888;font-size:12px;padding-left:36px;display:block";
+    blk.appendChild(q);hc.appendChild(blk);
+  });
+  wrap.appendChild(hc);
+  return wrap;
+}
+
+// ── ADMIN TAB ────────────────────────────────────────────
+function rAdmin() {
+  const wrap = dv();
+
+  // Race Hot Takes per race
+  const racesDone = races.filter(r => r.hasResults || Object.values(state.raceTips?.[r.k]||{}).some(t => t.hotTake));
+  if (racesDone.length > 0) {
+    const htCard = dv("card");
+    htCard.appendChild(sp("lbl","🔥 Race Hot Takes bewerten"));
+    const s=sp();s.textContent="Pro Rennen und Spieler: ✓ Richtig (+4 Pkt)";s.style="font-size:11px;color:var(--gray);display:block;margin-bottom:12px";htCard.appendChild(s);
+
+    racesDone.forEach(r => {
+      const raceTips = state.raceTips?.[r.k] || {};
+      const hasAnyHT = (state.players||[]).some(p => raceTips[p]?.hotTake);
+      if (!hasAnyHT) return;
+
+      const rBlock = dv(); rBlock.style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--bdr)";
+      const rTitle = sp();rTitle.textContent=r.k+" – "+r.n;rTitle.style="font-weight:700;display:block;margin-bottom:8px;font-size:13px";
+      rBlock.appendChild(rTitle);
+
+      (state.players||[]).forEach(p => {
+        const tip = raceTips[p];
+        if (!tip?.hotTake) return;
+        const pRow = dv();pRow.style="display:flex;align-items:center;gap:8px;margin-bottom:6px";
+        const av=dv("av");av.style.width="24px";av.style.height="24px";av.style.fontSize="11px";av.textContent=p[0];
+        const nameSpan=sp();nameSpan.textContent=p;nameSpan.style="font-weight:600;font-size:12px;width:60px;flex-shrink:0";
+        const htSpan=sp();htSpan.textContent='"'+tip.hotTake+'"';htSpan.style="flex:1;font-style:italic;color:#aaa;font-size:11px";
+        const curOk = tip.htOk;
+        const bg2 = curOk===true?"rgba(0,212,126,.28)":curOk===false?"rgba(225,6,0,.28)":"#1a1a1a";
+        const grp = bGrp(
+          () => { const nt={...state.raceTips[r.k],[p]:{...(state.raceTips[r.k]?.[p]||{}),htOk:true}};saveState({raceTips:{...state.raceTips,[r.k]:nt}}); },
+          () => { const nt={...state.raceTips[r.k],[p]:{...(state.raceTips[r.k]?.[p]||{}),htOk:false}};saveState({raceTips:{...state.raceTips,[r.k]:nt}}); },
+          () => { const nt={...state.raceTips[r.k],[p]:{...(state.raceTips[r.k]?.[p]||{}),htOk:null}};saveState({raceTips:{...state.raceTips,[r.k]:nt}}); },
+          curOk
+        );
+        pRow.appendChild(av);pRow.appendChild(nameSpan);pRow.appendChild(htSpan);pRow.appendChild(grp);
+        rBlock.appendChild(pRow);
+      });
+      htCard.appendChild(rBlock);
+    });
+    wrap.appendChild(htCard);
+  }
+
+  // Season evaluation
+  const ec = dv("card");
+  ec.appendChild(sp("lbl","🌟 Saison-Tipps bewerten"));
+  const s=sp();s.textContent="Champion + Saison-Hot-Take";s.style="font-size:11px;color:var(--gray);display:block;margin-bottom:10px";ec.appendChild(s);
+  (state.players||[]).forEach(p => {
+    const st=state.seasonTips?.[p]||{};
+    const blk=dv("ablk");
+    const nm=el("div");nm.textContent=p;nm.style="font-weight:700;margin-bottom:10px";blk.appendChild(nm);
+    const r1=dv();r1.style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px";
+    const r1l=dv();r1l.style="flex:1;min-width:0";r1l.appendChild(sp("lbl","🏆 Champion"));
+    const cv=sp();cv.textContent=st.champion||"?";cv.style="font-size:12px;color:var(--white);display:block";r1l.appendChild(cv);r1.appendChild(r1l);
+    r1.appendChild(bGrp(
+      ()=>saveState({seasonTips:{...state.seasonTips,[p]:{...st,chOk:true}}}),
+      ()=>saveState({seasonTips:{...state.seasonTips,[p]:{...st,chOk:false}}}),
+      ()=>saveState({seasonTips:{...state.seasonTips,[p]:{...st,chOk:null}}}),
+      st.chOk
+    ));blk.appendChild(r1);
+    const r2=dv();r2.style="display:flex;justify-content:space-between;align-items:center;gap:8px";
+    const r2l=dv();r2l.style="flex:1;min-width:0";r2l.appendChild(sp("lbl","🔥 Saison-Hot-Take"));
+    const ht=sp();ht.textContent='"'+(st.hotTake||"?")+'"';ht.className="ital";r2l.appendChild(ht);r2.appendChild(r2l);
+    r2.appendChild(bGrp(
+      ()=>saveState({seasonTips:{...state.seasonTips,[p]:{...st,htOk:true}}}),
+      ()=>saveState({seasonTips:{...state.seasonTips,[p]:{...st,htOk:false}}}),
+      ()=>saveState({seasonTips:{...state.seasonTips,[p]:{...st,htOk:null}}}),
+      st.htOk
+    ));blk.appendChild(r2);
+    ec.appendChild(blk);
+  });
+  wrap.appendChild(ec);
+
+  // Edit season goals
+  const ed = dv("card"); ed.appendChild(sp("lbl","Saisonziele bearbeiten"));
+  (state.players||[]).forEach(p => {
+    const st=state.seasonTips?.[p]||{};
+    const grid=dv("gedit");
+    const nd=dv();nd.appendChild(sp("lbl","Spieler"));const pn=el("div");pn.textContent=p;pn.style="font-weight:700;padding:8px 0";nd.appendChild(pn);
+    const cd=dv();cd.appendChild(sp("lbl","Champion"));cd.appendChild(dSel(st.champion||"",v=>saveState({seasonTips:{...state.seasonTips,[p]:{...st,champion:v}}})));
+    const hd=dv();hd.appendChild(sp("lbl","Saison-Hot-Take"));
+    const inp=el("input",{type:"text",placeholder:"Hot Take..."});inp.value=st.hotTake||"";
+    inp.addEventListener("input",e=>{ const ns={...state.seasonTips,[p]:{...st,hotTake:e.target.value}};state.seasonTips=ns;if(db){db.collection("tippspiel").doc("state").set(state);}});
+    hd.appendChild(inp);
+    grid.appendChild(nd);grid.appendChild(cd);grid.appendChild(hd);ed.appendChild(grid);
+  });
+  wrap.appendChild(ed);
+
+  // Player management
+  const pc = dv("card"); pc.appendChild(sp("lbl","Spieler verwalten"));
+  const ar=dv();ar.style="display:flex;gap:8px;margin-bottom:10px";
+  const ni=el("input",{type:"text",placeholder:"Neuer Spieler..."});ni.style.flex="1";
+  const ab=el("button",{cls:"btn br",onclick:()=>{
+    const name=ni.value.trim();if(!name)return;
+    if(!(state.players||[]).includes(name)){
+      saveState({players:[...(state.players||[]),name],seasonTips:{...state.seasonTips,[name]:{champion:"",hotTake:"",htOk:null,chOk:null}}});
+    }ni.value="";
+  }});ab.textContent="+ Hinzufügen";ar.appendChild(ni);ar.appendChild(ab);pc.appendChild(ar);
+  (state.players||[]).forEach(p => {
+    const row=dv("row");const av=dv("av");av.textContent=p[0];const nm=sp();nm.textContent=p;nm.style="flex:1";
+    const rb=el("button",{cls:"sm",onclick:()=>saveState({players:(state.players||[]).filter(x=>x!==p)})});
+    rb.textContent="✕";rb.style="background:rgba(225,6,0,.15);color:#ff6b6b";
+    row.appendChild(av);row.appendChild(nm);row.appendChild(rb);pc.appendChild(row);
+  });
+  wrap.appendChild(pc);
+
+  // API + backup
+  const ac = dv("card card-danger");
+  ac.appendChild(sp("lbl","Daten & API"));
+  const am=sp();am.textContent=apiMsg;am.style="font-size:11px;color:var(--gray);display:block;margin-bottom:10px;padding:8px 10px;background:#0a0a0a;border-radius:6px";ac.appendChild(am);
+  const br2=dv();br2.style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px";
+  const rb3=el("button",{cls:"btn br",onclick:fetchResults});rb3.textContent="🔄 Ergebnisse laden";br2.appendChild(rb3);
+  const eb=el("button",{cls:"btn bd",onclick:()=>{const a=document.createElement("a");a.href="data:text/json;charset=utf-8,"+encodeURIComponent(JSON.stringify(state,null,2));a.download="f1tip_2026_backup.json";a.click();}});
+  eb.textContent="📥 Backup";br2.appendChild(eb);
+  ac.appendChild(br2);
+  const nt=sp();nt.textContent="Daten: Firebase Firestore · API: api.jolpi.ca";nt.style="font-size:10px;color:#333";ac.appendChild(nt);
+  wrap.appendChild(ac);
+  return wrap;
+}
+
+// ── MAIN RENDER ──────────────────────────────────────────
+function render() {
+  const lbd = lb();
+  const app = document.getElementById("app");
+  app.innerHTML = "";
+
+  const hdr = dv("hdr");
+  const emoji = el("div"); emoji.textContent="🏎️"; emoji.style.fontSize="32px";
+  const hi = dv(); hi.style="flex:1";
+  const ht = el("div");ht.className="htitle";ht.textContent="F1 Tippspiel 2026";
+  const hs = el("div");hs.className="hsub";hs.textContent="SEASON PREDICTION CHALLENGE";
+  hi.appendChild(ht);hi.appendChild(hs);
+  const hl = dv("hleader");
+  const hln = el("div");hln.className="hln";hln.textContent=(lbd[0]?.name)||"?";
+  const hll = el("div");hll.className="hll";hll.textContent="FÜHREND";
+  hl.appendChild(hln);hl.appendChild(hll);
+  hdr.appendChild(emoji);hdr.appendChild(hi);hdr.appendChild(hl);
+  app.appendChild(hdr);
+
+  const nav = dv("nav");
+  [["🏆","Wertung","leaderboard"],["🏁","Rennen","races"],["🌟","Saison","season"],["⚙️","Admin","admin"]].forEach(([ico,lbl2,id]) => {
+    const b=el("button",{cls:"nb"+(tab===id?" active":""),onclick:()=>{tab=id;selRace=null;render();}});
+    const ic=sp("ico");ic.textContent=ico;const lb3=sp();lb3.textContent=lbl2;b.appendChild(ic);b.appendChild(lb3);nav.appendChild(b);
+  });
+  app.appendChild(nav);
+
+  const cnt = dv("content");
+  if      (tab==="leaderboard") cnt.appendChild(rLB());
+  else if (tab==="races")       cnt.appendChild(rRaces());
+  else if (tab==="season")      cnt.appendChild(rSeason());
+  else if (tab==="admin")       cnt.appendChild(rAdmin());
+  app.appendChild(cnt);
+}
+
+// ── INIT ─────────────────────────────────────────────────
+initFirebase();
+fetchResults();
+</script>
+</body>
+</html>
