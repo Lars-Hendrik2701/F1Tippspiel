@@ -301,6 +301,7 @@ function rLB(){
 
 // ────── RACES LIST ──────
 function rRaces(){
+  try{
   if(selRace)return rDetail(selRace);
   const wrap=dv();
   const done=races.filter(r=>r.hasResults);const next=races.filter(r=>!r.hasResults);
@@ -335,10 +336,12 @@ function rRaces(){
     wrap.appendChild(card);}
   if(!next.length&&!done.length){const d=dv();d.setAttribute("style","color:var(--gray);text-align:center;padding:40px;font-size:14px");d.textContent=apiMsg;wrap.appendChild(d);}
   return wrap;
+  }catch(err){const e=dv();e.setAttribute("style","padding:20px;color:#ff6b6b;font-size:12px;font-family:monospace");e.textContent="Fehler: "+err.message;return e;}
 }
 
 // ────── RACE DETAIL ──────
 function rDetail(rk){
+  try{
   const race=races.find(r=>r.k===rk)||{k:rk,n:rk,c:"",d:""};
   const res=(state.raceResults||{})[rk];
   const saved=state.raceTips?.[rk]||{};
@@ -442,10 +445,12 @@ function rDetail(rk){
     saveState({raceTips:{...state.raceTips,[rk]:merged}});draft={};
   }});sb.textContent="Tipps fuer "+race.n+" speichern";card.appendChild(sb);
   wrap.appendChild(card);return wrap;
+  }catch(err){const e=dv();e.setAttribute("style","padding:20px;color:#ff6b6b;font-size:12px;font-family:monospace;white-space:pre-wrap");e.textContent="Fehler in Rennen-Detail:\n"+err.message+"\n"+err.stack;return e;}
 }
 
 // ────── SEASON ──────
 function rSeason(){
+  try{
   const wrap=dv();
   const cc=dv("card");cc.appendChild(sp("lbl","WM-Champion-Tipps"));
   const s1=sp();s1.textContent="Bewertung im Admin-Tab am Saisonende (+4 Pkt)";s1.setAttribute("style","font-size:11px;color:var(--gray);display:block;margin-bottom:10px");cc.appendChild(s1);
@@ -455,10 +460,12 @@ function rSeason(){
   const s2=sp();s2.textContent="Bewertung im Admin-Tab am Saisonende (+4 Pkt)";s2.setAttribute("style","font-size:11px;color:var(--gray);display:block;margin-bottom:10px");hc.appendChild(s2);
   (state.players||[]).forEach(p=>{const st=state.seasonTips?.[p]||{};const blk=dv("mb14");const tr2=dv();tr2.setAttribute("style","display:flex;align-items:center;gap:8px;margin-bottom:5px");const av=dv("av");av.textContent=p[0];const nm=sp();nm.textContent=p;nm.setAttribute("style","font-weight:700;flex:1");tr2.appendChild(av);tr2.appendChild(nm);tr2.appendChild(pill(st.htOk));blk.appendChild(tr2);const q=sp();q.textContent='"'+(st.hotTake||"?")+'"';q.setAttribute("style","font-style:italic;color:#888;font-size:12px;padding-left:36px;display:block");blk.appendChild(q);hc.appendChild(blk);});
   wrap.appendChild(hc);return wrap;
+  }catch(err){const e=dv();e.setAttribute("style","padding:20px;color:#ff6b6b;font-size:12px");e.textContent="Fehler: "+err.message;return e;}
 }
 
 // ────── ADMIN ──────
 function rAdmin(){
+  try{
   const wrap=dv();
   // Race hot takes
   const racesDone=races.filter(r=>r.hasResults||(state.players||[]).some(p=>state.raceTips?.[r.k]?.[p]?.hotTake));
@@ -527,6 +534,7 @@ function rAdmin(){
   const rb3=el("button",{cls:"btn br",onclick:fetchResults});rb3.textContent="Ergebnisse laden";br2.appendChild(rb3);
   const eb=el("button",{cls:"btn bd",onclick:()=>{const a=document.createElement("a");a.href="data:text/json;charset=utf-8,"+encodeURIComponent(JSON.stringify(state,null,2));a.download="f1tip_2026_backup.json";a.click();}});eb.textContent="Backup";br2.appendChild(eb);
   ac.appendChild(br2);wrap.appendChild(ac);return wrap;
+  }catch(err){const e=dv();e.setAttribute("style","padding:20px;color:#ff6b6b;font-size:12px");e.textContent="Fehler Admin: "+err.message;return e;}
 }
 
 // ────── RENDER ──────
