@@ -89,6 +89,7 @@ const FIREBASE_CONFIG = {
 
 const IS_CFG = !FIREBASE_CONFIG.apiKey.startsWith("DEIN");
 const DRV=["Albon","Alonso","Antonelli","Bearman","Bortoleto","Bottas","Colapino","Gasly","Hadjar","Hamilton","Hulkenberg","Lawson","Leclerc","Lindblad","Norris","Ocon","Piastri","Perez","Russell","Sainz","Stroll","Verstappen"];
+const MED=["\uD83E\uDD47","\uD83E\uDD48","\uD83E\uDD49"];
 const CAL=[
   {k:"R01",n:"Australien GP",   c:"Albert Park Circuit",d:"15.03.2026"},
   {k:"R02",n:"China GP",         c:"Shanghai Int. Circuit",d:"22.03.2026"},
@@ -139,7 +140,16 @@ function initFirebase(){
     firebase.initializeApp(FIREBASE_CONFIG);
     db=firebase.firestore();
     db.collection("tippspiel").doc("state").onSnapshot(snap=>{
-      if(snap.exists){const d=snap.data();state={...state,...d};Object.keys(state.raceResults||{}).forEach(key=>{const r=races.find(rc=>rc.k===key);if(r)r.hasResults=true;});}
+      if(snap.exists){
+        const d=snap.data();
+        state={...state,...d};
+        // Ensure arrays/objects are always present
+        if(!Array.isArray(state.players))state.players=["Lars","Hannah","Roschan","Tobi"];
+        if(!state.seasonTips)state.seasonTips={};
+        if(!state.raceTips)state.raceTips={};
+        if(!state.raceResults)state.raceResults={};
+        Object.keys(state.raceResults).forEach(key=>{const r=races.find(rc=>rc.k===key);if(r)r.hasResults=true;});
+      }
       syncStatus="online";render();
     },()=>{syncStatus="error";render();});
   }catch(e){syncStatus="error";render();}
@@ -205,7 +215,10 @@ function pTotal(p){
   Object.keys(state.raceTips||{}).forEach(k=>{tot+=scoreRace(state.raceTips[k]?.[p],(state.raceResults||{})[k]).pts;});
   if(st.htOk===true)tot+=4;if(st.chOk===true)tot+=4;return tot;
 }
-function lb(){return(state.players||[]).map(p=>({name:p,total:pTotal(p)})).sort((a,b)=>b.total-a.total);}
+function lb(){
+  try{return(state.players||[]).map(p=>({name:p,total:pTotal(p)})).sort((a,b)=>b.total-a.total);}
+  catch(e){console.error("lb error:",e);return[];}
+}
 
 // ────── DOM HELPERS ──────
 function el(t,a,ch){
@@ -224,10 +237,10 @@ function dSel(val,onChange){
   return s;
 }
 function bGrp(onT,onF,onN,cur){
-  const w=dv();w.style="display:flex;gap:4px";
+  const w=dv();w.setAttribute("style","display:flex;gap:4px");
   [[true,"Richtig","rgba(0,212,126,.28)","#00D47E",onT],[false,"Falsch","rgba(225,6,0,.28)","#ff6b6b",onF],[null,"Offen","#1e1e1e","#555",onN]].forEach(([v,l,bg,col,fn])=>{
     const b=el("button",{cls:"sm",onclick:fn});b.textContent=l;
-    b.style="background:"+(cur===v?bg:"#1a1a1a")+";color:"+(cur===v?col:"#555");w.appendChild(b);
+    b.setAttribute("style","background:")+(cur===v?bg:"#1a1a1a")+";color:"+(cur===v?col:"#555");w.appendChild(b);
   });return w;
 }
 function syncChip(){
@@ -238,8 +251,8 @@ function syncChip(){
 }
 function setupBanner(){
   const d=dv("setup-banner");
-  const t=el("div");t.innerHTML="Setup: Firebase noch nicht konfiguriert";t.style="font-size:14px;margin-bottom:10px;color:#ffaa44;font-weight:700";
-  const steps=el("ol");steps.style="padding-left:18px;font-size:12px;color:#aaa;line-height:2.2";
+  const t=el("div");t.innerHTML="Setup: Firebase noch nicht konfiguriert";t.setAttribute("style","font-size:14px;margin-bottom:10px;color:#ffaa44;font-weight:700");
+  const steps=el("ol");steps.setAttribute("style","padding-left:18px;font-size:12px;color:#aaa;line-height:2.2");
   ["<a href='https://console.firebase.google.com' target='_blank' style='color:#7eb8ff'>console.firebase.google.com</a> &rarr; Projekt erstellen",
    "Firestore Database &rarr; erstellen &rarr; Testmodus",
    "Zahnrad &rarr; Projekteinstellungen &rarr; Web-App (&lt;/&gt;)",
@@ -254,32 +267,32 @@ function rLB(){
   const wrap=dv();
   if(!IS_CFG)wrap.appendChild(setupBanner());
   const card=dv("card");
-  const top=dv();top.style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px";
+  const top=dv();top.setAttribute("style","display:flex;justify-content:space-between;align-items:center;margin-bottom:14px");
   const left=dv();left.appendChild(sp("lbl","Gesamtwertung 2026"));
-  const sub=sp();sub.textContent=apiMsg;sub.style="font-size:10px;color:var(--gray)";left.appendChild(sub);
+  const sub=sp();sub.textContent=apiMsg;sub.setAttribute("style","font-size:10px;color:var(--gray)");left.appendChild(sub);
   top.appendChild(left);top.appendChild(syncChip());card.appendChild(top);
   lbd.forEach((p,i)=>{
     const bkA=[];Object.keys(state.raceTips||{}).forEach(key=>{const sc=scoreRace(state.raceTips[key]?.[p.name],(state.raceResults||{})[key]);if(sc.pts>0)bkA.push({race:key,pts:sc.pts,detail:sc.bk});});
     const st=state.seasonTips?.[p.name]||{};const isOpen=openBD===p.name;
-    const pb=dv();pb.style="margin-bottom:16px";
-    const tr=dv();tr.style="display:flex;align-items:center;gap:10px;margin-bottom:6px";
-    const med=sp();med.textContent=MED[i]||("#"+(i+1));med.style="font-size:22px;width:28px;text-align:center;flex-shrink:0";
-    const nm=sp();nm.textContent=p.name;nm.style="font-weight:700;font-size:15px;flex:1";
-    const pts=sp();pts.textContent=String(p.total);pts.style="font-family:'Courier New',monospace;font-weight:700;font-size:22px;color:"+(i===0?"var(--yellow)":"var(--white)");
-    const pl=sp();pl.textContent="Pkt";pl.style="color:var(--gray);font-size:11px;margin-right:4px";
-    const tog=el("button",{cls:"sm",onclick:()=>{openBD=isOpen?null:p.name;render();}});tog.textContent=isOpen?"[-]":"[+]";tog.style="background:var(--dark);color:var(--white)";
+    const pb=dv();pb.setAttribute("style","margin-bottom:16px");
+    const tr=dv();tr.setAttribute("style","display:flex;align-items:center;gap:10px;margin-bottom:6px");
+    const med=sp();med.textContent=MED[i]||("#"+(i+1));med.setAttribute("style","font-size:22px;width:28px;text-align:center;flex-shrink:0");
+    const nm=sp();nm.textContent=p.name;nm.setAttribute("style","font-weight:700;font-size:15px;flex:1");
+    const pts=sp();pts.textContent=String(p.total);pts.setAttribute("style","font-family:'Courier New',monospace;font-weight:700;font-size:22px;color:")+(i===0?"var(--yellow)":"var(--white)");
+    const pl=sp();pl.textContent="Pkt";pl.setAttribute("style","color:var(--gray);font-size:11px;margin-right:4px");
+    const tog=el("button",{cls:"sm",onclick:()=>{openBD=isOpen?null:p.name;render();}});tog.textContent=isOpen?"[-]":"[+]";tog.setAttribute("style","background:var(--dark);color:var(--white)");
     tr.appendChild(med);tr.appendChild(nm);tr.appendChild(pts);tr.appendChild(pl);tr.appendChild(tog);pb.appendChild(tr);
-    const bw=dv("bar");const bf=dv("barf");bf.style="width:"+(p.total/mx*100)+"%;"+(i===0?"background:linear-gradient(90deg,var(--red),var(--yellow))":"background:linear-gradient(90deg,var(--red),#ff6b6b)");bw.appendChild(bf);pb.appendChild(bw);
+    const bw=dv("bar");const bf=dv("barf");bf.setAttribute("style","width:")+(p.total/mx*100)+"%;"+(i===0?"background:linear-gradient(90deg,var(--red),var(--yellow))":"background:linear-gradient(90deg,var(--red),#ff6b6b)");bw.appendChild(bf);pb.appendChild(bw);
     if(isOpen){const bd=dv("bk");
-      bkA.forEach(b=>{const line=dv("bkl");const rc=sp("bkr",b.race);const det=sp();det.textContent=b.detail.join(" - ");det.style="flex:1";const pt=sp();pt.textContent="+"+b.pts;pt.style="color:var(--green);font-weight:700";line.appendChild(rc);line.appendChild(det);line.appendChild(pt);bd.appendChild(line);});
-      if(st.htOk===true){const d=sp();d.textContent="Saison-Hot-Take korrekt +4";d.style="display:block;font-size:11px;color:var(--green)";bd.appendChild(d);}
-      if(st.chOk===true){const d=sp();d.textContent="Champion korrekt +4";d.style="display:block;font-size:11px;color:var(--green)";bd.appendChild(d);}
-      if(!bkA.length&&st.htOk!==true&&st.chOk!==true){const d=sp();d.textContent="Noch keine Punkte";d.style="font-size:11px;color:var(--gray)";bd.appendChild(d);}
+      bkA.forEach(b=>{const line=dv("bkl");const rc=sp("bkr",b.race);const det=sp();det.textContent=b.detail.join(" - ");det.setAttribute("style","flex:1");const pt=sp();pt.textContent="+"+b.pts;pt.setAttribute("style","color:var(--green);font-weight:700");line.appendChild(rc);line.appendChild(det);line.appendChild(pt);bd.appendChild(line);});
+      if(st.htOk===true){const d=sp();d.textContent="Saison-Hot-Take korrekt +4";d.setAttribute("style","display:block;font-size:11px;color:var(--green)");bd.appendChild(d);}
+      if(st.chOk===true){const d=sp();d.textContent="Champion korrekt +4";d.setAttribute("style","display:block;font-size:11px;color:var(--green)");bd.appendChild(d);}
+      if(!bkA.length&&st.htOk!==true&&st.chOk!==true){const d=sp();d.textContent="Noch keine Punkte";d.setAttribute("style","font-size:11px;color:var(--gray)");bd.appendChild(d);}
       pb.appendChild(bd);}
     card.appendChild(pb);
   });
   wrap.appendChild(card);
-  const rc=dv("card");rc.style="font-size:12px;color:var(--gray);line-height:2";
+  const rc=dv("card");rc.setAttribute("style","font-size:12px;color:var(--gray);line-height:2");
   rc.appendChild(sp("lbl","Punkteregeln"));
   [["Person im Podium (falsche Position)","1"],["Exakte Position richtig","2"],["Race Hot Take korrekt","4"],["Saison-Hot-Take korrekt","4"],["WM-Champion richtig","4"]].forEach(([txt,p])=>{
     const d=document.createElement("div");d.innerHTML=txt+": <b style='color:var(--white)'>+"+p+" Pkt</b>";rc.appendChild(d);});
@@ -297,10 +310,10 @@ function rRaces(){
       const tips=state.raceTips?.[r.k]||{};
       const tipCount=(state.players||[]).filter(p=>tips[p]?.p1||tips[p]?.hotTake).length;
       const row=dv("row clk");row.addEventListener("click",()=>{draft={};manualBuf={};selRace=r.k;render();});
-      const ks=sp();ks.textContent=r.k;ks.style="font-family:monospace;color:var(--gray);font-size:11px;width:28px;flex-shrink:0";
-      const info=dv();info.style="flex:1";
-      const nn=sp();nn.textContent=r.n;nn.style="font-weight:600;display:block";
-      const dd=sp();dd.textContent=r.c+" - "+r.d;dd.style="font-size:11px;color:var(--gray);display:block";
+      const ks=sp();ks.textContent=r.k;ks.setAttribute("style","font-family:monospace;color:var(--gray);font-size:11px;width:28px;flex-shrink:0");
+      const info=dv();info.setAttribute("style","flex:1");
+      const nn=sp();nn.textContent=r.n;nn.setAttribute("style","font-weight:600;display:block");
+      const dd=sp();dd.textContent=r.c+" - "+r.d;dd.setAttribute("style","font-size:11px;color:var(--gray);display:block");
       info.appendChild(nn);info.appendChild(dd);row.appendChild(ks);row.appendChild(info);
       if(tipCount>0)row.appendChild(sp("tag tg","Tipps "+tipCount+"/"+(state.players||[]).length));
       else row.appendChild(sp("tag tgy","+ Tippen"));
@@ -312,15 +325,15 @@ function rRaces(){
       const res=(state.raceResults||{})[r.k];
       const topP=(state.players||[]).map(p=>({name:p,pts:scoreRace(state.raceTips?.[r.k]?.[p],res).pts})).sort((a,b)=>b.pts-a.pts)[0];
       const row=dv("row clk");row.addEventListener("click",()=>{draft={};manualBuf={};selRace=r.k;render();});
-      const ks=sp();ks.textContent=r.k;ks.style="font-family:monospace;color:var(--gray);font-size:11px;width:28px;flex-shrink:0";
-      const info=dv();info.style="flex:1";
-      const nn=sp();nn.textContent=r.n;nn.style="font-weight:600;display:block";
-      const dd=sp();dd.textContent=res?res.p1+" - "+res.p2+" - "+res.p3:r.d;dd.style="font-size:11px;color:var(--gray);display:block";
+      const ks=sp();ks.textContent=r.k;ks.setAttribute("style","font-family:monospace;color:var(--gray);font-size:11px;width:28px;flex-shrink:0");
+      const info=dv();info.setAttribute("style","flex:1");
+      const nn=sp();nn.textContent=r.n;nn.setAttribute("style","font-weight:600;display:block");
+      const dd=sp();dd.textContent=res?res.p1+" - "+res.p2+" - "+res.p3:r.d;dd.setAttribute("style","font-size:11px;color:var(--gray);display:block");
       info.appendChild(nn);info.appendChild(dd);row.appendChild(ks);row.appendChild(info);
       if(topP?.pts>0)row.appendChild(sp("tag ty",topP.name+" +"+topP.pts));
       row.appendChild(sp(null," >"));card.appendChild(row);});
     wrap.appendChild(card);}
-  if(!next.length&&!done.length){const d=dv();d.style="color:var(--gray);text-align:center;padding:40px;font-size:14px";d.textContent=apiMsg;wrap.appendChild(d);}
+  if(!next.length&&!done.length){const d=dv();d.setAttribute("style","color:var(--gray);text-align:center;padding:40px;font-size:14px");d.textContent=apiMsg;wrap.appendChild(d);}
   return wrap;
 }
 
@@ -336,17 +349,17 @@ function rDetail(rk){
   back.textContent="< Zurueck";back.style.marginBottom="12px";wrap.appendChild(back);
 
   const card=dv("card");
-  const t=el("div");t.textContent=race.n;t.style="font-size:17px;font-weight:700;margin-bottom:2px";card.appendChild(t);
-  const s=el("div");s.textContent=(race.c||"")+(race.d?" - "+race.d:"");s.style="font-size:11px;color:var(--gray);margin-bottom:14px";card.appendChild(s);
+  const t=el("div");t.textContent=race.n;t.setAttribute("style","font-size:17px;font-weight:700;margin-bottom:2px");card.appendChild(t);
+  const s=el("div");s.textContent=(race.c||"")+(race.d?" - "+race.d:"");s.setAttribute("style","font-size:11px;color:var(--gray);margin-bottom:14px");card.appendChild(s);
 
   // ── Official result ──
   if(res){
     const rb=dv("rbox");
-    const rl=sp("lbl","Offizielles Ergebnis");rl.style="color:var(--green);display:block;margin-bottom:8px";rb.appendChild(rl);
+    const rl=sp("lbl","Offizielles Ergebnis");rl.setAttribute("style","color:var(--green);display:block;margin-bottom:8px");rb.appendChild(rl);
     ["p1","p2","p3"].forEach((pos,i)=>{
-      const row=dv();row.style="display:flex;gap:10px;align-items:center;margin-bottom:5px";
+      const row=dv();row.setAttribute("style","display:flex;gap:10px;align-items:center;margin-bottom:5px");
       row.appendChild(sp(null,MED[i]));
-      const n=sp();n.textContent=res[pos]||"?";n.style="font-weight:700;font-size:15px";row.appendChild(n);rb.appendChild(row);
+      const n=sp();n.textContent=res[pos]||"?";n.setAttribute("style","font-weight:700;font-size:15px");row.appendChild(n);rb.appendChild(row);
     });
     // Allow editing manual result
     const editBtn=el("button",{cls:"sm",onclick:()=>{
@@ -355,7 +368,7 @@ function rDetail(rk){
       const f=races.find(rc=>rc.k===rk);if(f)f.hasResults=false;
       manualBuf={...res};
       saveState({raceResults:newR});
-    }});editBtn.textContent="Ergebnis bearbeiten";editBtn.style="background:#1e1e1e;color:#888;margin-top:8px;display:block";
+    }});editBtn.textContent="Ergebnis bearbeiten";editBtn.setAttribute("style","background:#1e1e1e;color:#888;margin-top:8px;display:block");
     rb.appendChild(editBtn);card.appendChild(rb);
   } else {
     // ── Manual result entry ──
@@ -364,7 +377,7 @@ function rDetail(rk){
       manualBuf={...((state.raceResults||{})[rk]||{})};
     }
     const mb=dv("manual-box");
-    const ml=sp("lbl","Ergebnis manuell eintragen");ml.style="display:block;margin-bottom:10px";mb.appendChild(ml);
+    const ml=sp("lbl","Ergebnis manuell eintragen");ml.setAttribute("style","display:block;margin-bottom:10px");mb.appendChild(ml);
     const gr=dv("g3");
     ["p1","p2","p3"].forEach((pos,i)=>{
       const col=dv();const lb2=sp("lbl",MED[i]+" "+pos.toUpperCase());lb2.style.display="block";col.appendChild(lb2);
@@ -390,7 +403,7 @@ function rDetail(rk){
 
     // Cancel / back without saving
     const cancelBtn=el("button",{cls:"btn bd bbl",onclick:()=>{manualBuf={};selRace=null;render();}});
-    cancelBtn.textContent="Abbrechen";cancelBtn.style="margin-top:8px;opacity:.6";
+    cancelBtn.textContent="Abbrechen";cancelBtn.setAttribute("style","margin-top:8px;opacity:.6");
     mb.appendChild(cancelBtn);
     card.appendChild(mb);
   }
@@ -401,8 +414,8 @@ function rDetail(rk){
     const eff={...saved[pl]||{},...draft[pl]||{}};
     const sc=res?scoreRace(eff,res):{pts:null};
     const blk=dv("mb14");
-    const tr2=dv();tr2.style="display:flex;align-items:center;gap:8px;margin-bottom:10px";
-    const av=dv("av");av.textContent=pl[0];const nm=sp();nm.textContent=pl;nm.style="font-weight:700;flex:1";
+    const tr2=dv();tr2.setAttribute("style","display:flex;align-items:center;gap:8px;margin-bottom:10px");
+    const av=dv("av");av.textContent=pl[0];const nm=sp();nm.textContent=pl;nm.setAttribute("style","font-weight:700;flex:1");
     tr2.appendChild(av);tr2.appendChild(nm);
     if(sc.pts!==null){const ss=sp("tag tg","+"+sc.pts+" Pkt");ss.style.fontSize="13px";tr2.appendChild(ss);}
     blk.appendChild(tr2);
@@ -414,13 +427,13 @@ function rDetail(rk){
       }));gr.appendChild(col);
     });
     blk.appendChild(gr);
-    const htDiv=dv();htDiv.style="margin-top:8px";
+    const htDiv=dv();htDiv.setAttribute("style","margin-top:8px");
     const htLbl=sp("lbl","Race Hot Take (+4 wenn korrekt)");htLbl.style.display="block";htDiv.appendChild(htLbl);
     const htInp=el("input",{type:"text",placeholder:"z.B. Hamilton Top 3"});
     htInp.value=eff.hotTake||"";
     htInp.addEventListener("input",e=>{if(!draft[pl])draft[pl]={};draft[pl]={...saved[pl]||{},...draft[pl]||{},hotTake:e.target.value};});
     htDiv.appendChild(htInp);
-    if(eff.htOk!==undefined&&eff.htOk!==null){const s=dv();s.style="margin-top:4px";s.appendChild(pill(eff.htOk));htDiv.appendChild(s);}
+    if(eff.htOk!==undefined&&eff.htOk!==null){const s=dv();s.setAttribute("style","margin-top:4px");s.appendChild(pill(eff.htOk));htDiv.appendChild(s);}
     blk.appendChild(htDiv);card.appendChild(blk);
   });
 
@@ -435,12 +448,12 @@ function rDetail(rk){
 function rSeason(){
   const wrap=dv();
   const cc=dv("card");cc.appendChild(sp("lbl","WM-Champion-Tipps"));
-  const s1=sp();s1.textContent="Bewertung im Admin-Tab am Saisonende (+4 Pkt)";s1.style="font-size:11px;color:var(--gray);display:block;margin-bottom:10px";cc.appendChild(s1);
-  (state.players||[]).forEach(p=>{const st=state.seasonTips?.[p]||{};const row=dv("row");const av=dv("av");av.textContent=p[0];const nm=sp();nm.textContent=p;nm.style="font-weight:700;flex:1";const ch=sp();ch.textContent=st.champion||"?";ch.style="font-weight:600;color:var(--yellow);margin-right:6px";row.appendChild(av);row.appendChild(nm);row.appendChild(ch);row.appendChild(pill(st.chOk));cc.appendChild(row);});
+  const s1=sp();s1.textContent="Bewertung im Admin-Tab am Saisonende (+4 Pkt)";s1.setAttribute("style","font-size:11px;color:var(--gray);display:block;margin-bottom:10px");cc.appendChild(s1);
+  (state.players||[]).forEach(p=>{const st=state.seasonTips?.[p]||{};const row=dv("row");const av=dv("av");av.textContent=p[0];const nm=sp();nm.textContent=p;nm.setAttribute("style","font-weight:700;flex:1");const ch=sp();ch.textContent=st.champion||"?";ch.setAttribute("style","font-weight:600;color:var(--yellow);margin-right:6px");row.appendChild(av);row.appendChild(nm);row.appendChild(ch);row.appendChild(pill(st.chOk));cc.appendChild(row);});
   wrap.appendChild(cc);
   const hc=dv("card");hc.appendChild(sp("lbl","Saison-Hot-Takes"));
-  const s2=sp();s2.textContent="Bewertung im Admin-Tab am Saisonende (+4 Pkt)";s2.style="font-size:11px;color:var(--gray);display:block;margin-bottom:10px";hc.appendChild(s2);
-  (state.players||[]).forEach(p=>{const st=state.seasonTips?.[p]||{};const blk=dv("mb14");const tr2=dv();tr2.style="display:flex;align-items:center;gap:8px;margin-bottom:5px";const av=dv("av");av.textContent=p[0];const nm=sp();nm.textContent=p;nm.style="font-weight:700;flex:1";tr2.appendChild(av);tr2.appendChild(nm);tr2.appendChild(pill(st.htOk));blk.appendChild(tr2);const q=sp();q.textContent='"'+(st.hotTake||"?")+'"';q.style="font-style:italic;color:#888;font-size:12px;padding-left:36px;display:block";blk.appendChild(q);hc.appendChild(blk);});
+  const s2=sp();s2.textContent="Bewertung im Admin-Tab am Saisonende (+4 Pkt)";s2.setAttribute("style","font-size:11px;color:var(--gray);display:block;margin-bottom:10px");hc.appendChild(s2);
+  (state.players||[]).forEach(p=>{const st=state.seasonTips?.[p]||{};const blk=dv("mb14");const tr2=dv();tr2.setAttribute("style","display:flex;align-items:center;gap:8px;margin-bottom:5px");const av=dv("av");av.textContent=p[0];const nm=sp();nm.textContent=p;nm.setAttribute("style","font-weight:700;flex:1");tr2.appendChild(av);tr2.appendChild(nm);tr2.appendChild(pill(st.htOk));blk.appendChild(tr2);const q=sp();q.textContent='"'+(st.hotTake||"?")+'"';q.setAttribute("style","font-style:italic;color:#888;font-size:12px;padding-left:36px;display:block");blk.appendChild(q);hc.appendChild(blk);});
   wrap.appendChild(hc);return wrap;
 }
 
@@ -451,18 +464,18 @@ function rAdmin(){
   const racesDone=races.filter(r=>r.hasResults||(state.players||[]).some(p=>state.raceTips?.[r.k]?.[p]?.hotTake));
   if(racesDone.length>0){
     const htCard=dv("card");htCard.appendChild(sp("lbl","Race Hot Takes bewerten"));
-    const s=sp();s.textContent="Pro Rennen: Richtig = +4 Pkt";s.style="font-size:11px;color:var(--gray);display:block;margin-bottom:12px";htCard.appendChild(s);
+    const s=sp();s.textContent="Pro Rennen: Richtig = +4 Pkt";s.setAttribute("style","font-size:11px;color:var(--gray);display:block;margin-bottom:12px");htCard.appendChild(s);
     racesDone.forEach(r=>{
       const raceTips=state.raceTips?.[r.k]||{};
       if(!(state.players||[]).some(p=>raceTips[p]?.hotTake))return;
-      const rBlock=dv();rBlock.style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--bdr)";
-      const rTitle=sp();rTitle.textContent=r.k+" - "+r.n;rTitle.style="font-weight:700;display:block;margin-bottom:8px;font-size:13px";rBlock.appendChild(rTitle);
+      const rBlock=dv();rBlock.setAttribute("style","margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--bdr)");
+      const rTitle=sp();rTitle.textContent=r.k+" - "+r.n;rTitle.setAttribute("style","font-weight:700;display:block;margin-bottom:8px;font-size:13px");rBlock.appendChild(rTitle);
       (state.players||[]).forEach(p=>{
         const tip=raceTips[p];if(!tip?.hotTake)return;
-        const pRow=dv();pRow.style="display:flex;align-items:center;gap:8px;margin-bottom:6px";
+        const pRow=dv();pRow.setAttribute("style","display:flex;align-items:center;gap:8px;margin-bottom:6px");
         const av=dv("av");av.style.cssText="width:24px;height:24px;font-size:11px";av.textContent=p[0];
-        const nameS=sp();nameS.textContent=p;nameS.style="font-weight:600;font-size:12px;width:60px;flex-shrink:0";
-        const htS=sp();htS.textContent='"'+tip.hotTake+'"';htS.style="flex:1;font-style:italic;color:#aaa;font-size:11px";
+        const nameS=sp();nameS.textContent=p;nameS.setAttribute("style","font-weight:600;font-size:12px;width:60px;flex-shrink:0");
+        const htS=sp();htS.textContent='"'+tip.hotTake+'"';htS.setAttribute("style","flex:1;font-style:italic;color:#aaa;font-size:11px");
         const grp=bGrp(
           ()=>{const nt={...state.raceTips[r.k],[p]:{...tip,htOk:true}};saveState({raceTips:{...state.raceTips,[r.k]:nt}});},
           ()=>{const nt={...state.raceTips[r.k],[p]:{...tip,htOk:false}};saveState({raceTips:{...state.raceTips,[r.k]:nt}});},
@@ -475,16 +488,16 @@ function rAdmin(){
   }
   // Season evaluation
   const ec=dv("card");ec.appendChild(sp("lbl","Saison-Tipps bewerten"));
-  const ss=sp();ss.textContent="Champion + Saison-Hot-Take";ss.style="font-size:11px;color:var(--gray);display:block;margin-bottom:10px";ec.appendChild(ss);
+  const ss=sp();ss.textContent="Champion + Saison-Hot-Take";ss.setAttribute("style","font-size:11px;color:var(--gray);display:block;margin-bottom:10px");ec.appendChild(ss);
   (state.players||[]).forEach(p=>{
     const st=state.seasonTips?.[p]||{};const blk=dv("ablk");
-    const nm=el("div");nm.textContent=p;nm.style="font-weight:700;margin-bottom:10px";blk.appendChild(nm);
-    const r1=dv();r1.style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px";
-    const r1l=dv();r1l.style="flex:1;min-width:0";r1l.appendChild(sp("lbl","Champion"));
-    const cv=sp();cv.textContent=st.champion||"?";cv.style="font-size:12px;color:var(--white);display:block";r1l.appendChild(cv);r1.appendChild(r1l);
+    const nm=el("div");nm.textContent=p;nm.setAttribute("style","font-weight:700;margin-bottom:10px");blk.appendChild(nm);
+    const r1=dv();r1.setAttribute("style","display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px");
+    const r1l=dv();r1l.setAttribute("style","flex:1;min-width:0");r1l.appendChild(sp("lbl","Champion"));
+    const cv=sp();cv.textContent=st.champion||"?";cv.setAttribute("style","font-size:12px;color:var(--white);display:block");r1l.appendChild(cv);r1.appendChild(r1l);
     r1.appendChild(bGrp(()=>saveState({seasonTips:{...state.seasonTips,[p]:{...st,chOk:true}}}),()=>saveState({seasonTips:{...state.seasonTips,[p]:{...st,chOk:false}}}),()=>saveState({seasonTips:{...state.seasonTips,[p]:{...st,chOk:null}}}),st.chOk));blk.appendChild(r1);
-    const r2=dv();r2.style="display:flex;justify-content:space-between;align-items:center;gap:8px";
-    const r2l=dv();r2l.style="flex:1;min-width:0";r2l.appendChild(sp("lbl","Saison-Hot-Take"));
+    const r2=dv();r2.setAttribute("style","display:flex;justify-content:space-between;align-items:center;gap:8px");
+    const r2l=dv();r2l.setAttribute("style","flex:1;min-width:0");r2l.appendChild(sp("lbl","Saison-Hot-Take"));
     const ht=sp();ht.textContent='"'+(st.hotTake||"?")+'"';ht.className="ital";r2l.appendChild(ht);r2.appendChild(r2l);
     r2.appendChild(bGrp(()=>saveState({seasonTips:{...state.seasonTips,[p]:{...st,htOk:true}}}),()=>saveState({seasonTips:{...state.seasonTips,[p]:{...st,htOk:false}}}),()=>saveState({seasonTips:{...state.seasonTips,[p]:{...st,htOk:null}}}),st.htOk));blk.appendChild(r2);
     ec.appendChild(blk);
@@ -493,7 +506,7 @@ function rAdmin(){
   const ed=dv("card");ed.appendChild(sp("lbl","Saisonziele bearbeiten"));
   (state.players||[]).forEach(p=>{
     const st=state.seasonTips?.[p]||{};const grid=dv("gedit");
-    const nd=dv();nd.appendChild(sp("lbl","Spieler"));const pn=el("div");pn.textContent=p;pn.style="font-weight:700;padding:8px 0";nd.appendChild(pn);
+    const nd=dv();nd.appendChild(sp("lbl","Spieler"));const pn=el("div");pn.textContent=p;pn.setAttribute("style","font-weight:700;padding:8px 0");nd.appendChild(pn);
     const cd=dv();cd.appendChild(sp("lbl","Champion"));cd.appendChild(dSel(st.champion||"",v=>saveState({seasonTips:{...state.seasonTips,[p]:{...st,champion:v}}})));
     const hd=dv();hd.appendChild(sp("lbl","Saison-Hot-Take"));
     const inp=el("input",{type:"text",placeholder:"Hot Take..."});inp.value=st.hotTake||"";
@@ -502,15 +515,15 @@ function rAdmin(){
   });wrap.appendChild(ed);
   // Players
   const pc=dv("card");pc.appendChild(sp("lbl","Spieler verwalten"));
-  const ar=dv();ar.style="display:flex;gap:8px;margin-bottom:10px";
+  const ar=dv();ar.setAttribute("style","display:flex;gap:8px;margin-bottom:10px");
   const ni=el("input",{type:"text",placeholder:"Neuer Spieler..."});ni.style.flex="1";
   const ab=el("button",{cls:"btn br",onclick:()=>{const name=ni.value.trim();if(!name)return;if(!(state.players||[]).includes(name)){saveState({players:[...(state.players||[]),name],seasonTips:{...state.seasonTips,[name]:{champion:"",hotTake:"",htOk:null,chOk:null}}});}ni.value="";}});ab.textContent="+ Add";ar.appendChild(ni);ar.appendChild(ab);pc.appendChild(ar);
-  (state.players||[]).forEach(p=>{const row=dv("row");const av=dv("av");av.textContent=p[0];const nm=sp();nm.textContent=p;nm.style="flex:1";const rb=el("button",{cls:"sm",onclick:()=>saveState({players:(state.players||[]).filter(x=>x!==p)})});rb.textContent="X";rb.style="background:rgba(225,6,0,.15);color:#ff6b6b";row.appendChild(av);row.appendChild(nm);row.appendChild(rb);pc.appendChild(row);});
+  (state.players||[]).forEach(p=>{const row=dv("row");const av=dv("av");av.textContent=p[0];const nm=sp();nm.textContent=p;nm.setAttribute("style","flex:1");const rb=el("button",{cls:"sm",onclick:()=>saveState({players:(state.players||[]).filter(x=>x!==p)})});rb.textContent="X";rb.setAttribute("style","background:rgba(225,6,0,.15);color:#ff6b6b");row.appendChild(av);row.appendChild(nm);row.appendChild(rb);pc.appendChild(row);});
   wrap.appendChild(pc);
   // API
   const ac=dv("card card-danger");ac.appendChild(sp("lbl","Daten und API"));
-  const am=sp();am.textContent=apiMsg;am.style="font-size:11px;color:var(--gray);display:block;margin-bottom:10px;padding:8px 10px;background:#0a0a0a;border-radius:6px";ac.appendChild(am);
-  const br2=dv();br2.style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px";
+  const am=sp();am.textContent=apiMsg;am.setAttribute("style","font-size:11px;color:var(--gray);display:block;margin-bottom:10px;padding:8px 10px;background:#0a0a0a;border-radius:6px");ac.appendChild(am);
+  const br2=dv();br2.setAttribute("style","display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px");
   const rb3=el("button",{cls:"btn br",onclick:fetchResults});rb3.textContent="Ergebnisse laden";br2.appendChild(rb3);
   const eb=el("button",{cls:"btn bd",onclick:()=>{const a=document.createElement("a");a.href="data:text/json;charset=utf-8,"+encodeURIComponent(JSON.stringify(state,null,2));a.download="f1tip_2026_backup.json";a.click();}});eb.textContent="Backup";br2.appendChild(eb);
   ac.appendChild(br2);wrap.appendChild(ac);return wrap;
@@ -520,7 +533,7 @@ function rAdmin(){
 function render(){
   const lbd=lb();const app=document.getElementById("app");app.innerHTML="";
   const hdr=dv("hdr");const emoji=el("div");emoji.textContent="\uD83C\uDFCE\uFE0F";emoji.style.fontSize="32px";
-  const hi=dv();hi.style="flex:1";const ht=el("div");ht.className="htitle";ht.textContent="F1 Tippspiel 2026";const hs=el("div");hs.className="hsub";hs.textContent="SEASON PREDICTION CHALLENGE";hi.appendChild(ht);hi.appendChild(hs);
+  const hi=dv();hi.setAttribute("style","flex:1");const ht=el("div");ht.className="htitle";ht.textContent="F1 Tippspiel 2026";const hs=el("div");hs.className="hsub";hs.textContent="SEASON PREDICTION CHALLENGE";hi.appendChild(ht);hi.appendChild(hs);
   const hl=dv("hleader");const hln=el("div");hln.className="hln";hln.textContent=(lbd[0]?.name)||"?";const hll=el("div");hll.className="hll";hll.textContent="FUEHREND";hl.appendChild(hln);hl.appendChild(hll);
   hdr.appendChild(emoji);hdr.appendChild(hi);hdr.appendChild(hl);app.appendChild(hdr);
   const nav=dv("nav");
@@ -529,10 +542,16 @@ function render(){
     const ic=sp("ico");ic.textContent=ico;const lb3=sp();lb3.textContent=lbl2;b.appendChild(ic);b.appendChild(lb3);nav.appendChild(b);
   });app.appendChild(nav);
   const cnt=dv("content");
-  if(tab==="leaderboard")cnt.appendChild(rLB());
-  else if(tab==="races")cnt.appendChild(rRaces());
-  else if(tab==="season")cnt.appendChild(rSeason());
-  else if(tab==="admin")cnt.appendChild(rAdmin());
+  try{
+    if(tab==="leaderboard")cnt.appendChild(rLB());
+    else if(tab==="races")cnt.appendChild(rRaces());
+    else if(tab==="season")cnt.appendChild(rSeason());
+    else if(tab==="admin")cnt.appendChild(rAdmin());
+  }catch(err){
+    const errDiv=dv();errDiv.style.cssText="padding:20px;color:#ff6b6b;font-size:12px;font-family:monospace;white-space:pre-wrap";
+    errDiv.textContent="Render-Fehler: "+err.message+"\n"+err.stack;
+    cnt.appendChild(errDiv);
+  }
   app.appendChild(cnt);
 }
 
