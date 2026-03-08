@@ -89,7 +89,6 @@ const FIREBASE_CONFIG = {
 
 const IS_CFG = !FIREBASE_CONFIG.apiKey.startsWith("DEIN");
 const DRV=["Albon","Alonso","Antonelli","Bearman","Bortoleto","Bottas","Colapino","Gasly","Hadjar","Hamilton","Hulkenberg","Lawson","Leclerc","Lindblad","Norris","Ocon","Piastri","Perez","Russell","Sainz","Stroll","Verstappen"];
-const MED=["\uD83E\uDD47","\uD83E\uDD48","\uD83E\uDD49"];
 const CAL=[
   {k:"R01",n:"Australien GP",   c:"Albert Park Circuit",d:"15.03.2026"},
   {k:"R02",n:"China GP",         c:"Shanghai Int. Circuit",d:"22.03.2026"},
@@ -149,7 +148,15 @@ function initFirebase(){
 async function saveState(patch){
   Object.assign(state,patch);render();
   if(!db)return;
-  try{await db.collection("tippspiel").doc("state").set(state);}catch(e){console.error(e);}
+  try{
+    // update() only writes the changed fields - never wipes other data
+    await db.collection("tippspiel").doc("state").update(patch);
+  }catch(e){
+    // Document doesn't exist yet -> create it with set()
+    if(e.code==="not-found"||e.message?.includes("No document")){
+      try{await db.collection("tippspiel").doc("state").set(state);}catch(e2){console.error(e2);}
+    }else{console.error(e);}
+  }
 }
 
 async function fetchResults(){
@@ -167,7 +174,11 @@ async function fetchResults(){
         if(t3.length>=3){newRes[key]={p1:t3[0].Driver.familyName,p2:t3[1].Driver.familyName,p3:t3[2].Driver.familyName};const f=races.find(rc=>rc.k===key);if(f)f.hasResults=true;}});
       const n=Object.keys(newRes).length;
       apiMsg=races.length+" Rennen"+(n>0?" - "+n+" Ergebnisse":" - Saison noch nicht gestartet");
-      if(n>0)await saveState({raceResults:newRes});else render();
+      // Only write to Firebase if we found results not already in state
+      const existingKeys=Object.keys(state.raceResults||{});
+      const hasNew=Object.keys(newRes).some(k=>!existingKeys.includes(k));
+      if(n>0&&hasNew)await saveState({raceResults:newRes});
+      else{if(n>0)Object.assign(state,{raceResults:newRes});render();}
     }else{apiMsg=races.length+" Rennen - keine Ergebnisse";render();}
   }catch(e){apiMsg="Kalender geladen - API offline";render();}
 }
